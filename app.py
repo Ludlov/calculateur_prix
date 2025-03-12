@@ -1,7 +1,3 @@
-
-
-
-
 import streamlit as st
 
 def calculate_price(pr, transport_cost, incoterm_cost, agent=False, commission_rate=10, tva=0):
@@ -86,3 +82,4 @@ if st.button("Calculer"):
             st.markdown(f"**:red[{key} : {value:.2f} €/kg]**")
         else:
             st.write(f"{key} : {value:.2f} €/kg")
+
