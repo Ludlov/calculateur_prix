@@ -11,6 +11,22 @@ transport_costs = {
     "Océanie - Australie - Nouvelle-Zélande": 15
 }
 
+def calculate_price(pr, transport_cost, incoterm_cost, agent=False, commission_rate=10, tva=0):
+    results = {}
+    margins = [0.5, 0.4, 0.3, 0.25]
+    recommended_margin = 0.5 if pr > 15 else (0.6 if pr * 1.6 <= 30 else 0.5)
+    
+    for margin in margins:
+        if agent:
+            pv = (pr / (1 - margin)) / (1 - commission_rate / 100) + transport_cost + incoterm_cost
+        else:
+            pv = (pr / (1 - margin)) + transport_cost + incoterm_cost
+        
+        highlight = "(Recommandé)" if margin == recommended_margin else ""
+        results[f'PV avec {int(margin * 100)}% de marge et {commission_rate}% de commission {highlight}'] = pv * (1 + tva / 100)
+    
+    return results
+
 # Streamlit App
 st.title("Calculateur de Prix de Vente")
 
@@ -21,25 +37,23 @@ pr = st.number_input("Prix de Revient (PR) en €", min_value=0.0, step=0.1)
 transport_zone = st.selectbox("Zone de livraison", list(transport_costs.keys()))
 transport_cost = transport_costs[transport_zone]
 
-# Sélection de l'Incoterm
-incoterm = st.selectbox("Incoterm", [
-    "DAP (Transport inclus)", 
-    "EXW (Acheteur prend tout en charge)", 
-    "FOB (Transport jusqu'au port exportation)", 
-    "CIF (FOB + Assurance & Fret)", 
-    "DDP (CIF + Droits de douane et taxes)"
+# Sélection de l'Incoterm avec description
+incoterm = st.selectbox("Incoterm (par défaut DAP, avec impact des frais inclus)", [
+    "DAP (Transport inclus) - Coût du transport inclus", 
+    "EXW (Acheteur prend tout en charge) - Aucun coût", 
+    "FOB (Transport jusqu'au port exportation) - 1€/kg", 
+    "CIF (FOB + Assurance & Fret) - 3€/kg", 
+    "DDP (CIF + Droits de douane et taxes) - 5€/kg"
 ])
 
-# Définition des coûts Incoterm
+# Définition des coûts supplémentaires en fonction de l'incoterm
 incoterm_costs = {
-    "DAP (Transport inclus)": 0,  # Transport déjà inclus
-    "EXW (Acheteur prend tout en charge)": 0,  
-    "FOB (Transport jusqu'au port exportation)": 1,  
-    "CIF (FOB + Assurance & Fret)": 3,  
-    "DDP (CIF + Droits de douane et taxes)": 5  
+    "DAP (Transport inclus) - Coût du transport inclus": transport_cost,  
+    "EXW (Acheteur prend tout en charge) - Aucun coût": 0,  
+    "FOB (Transport jusqu'au port exportation) - 1€/kg": 1,  
+    "CIF (FOB + Assurance & Fret) - 3€/kg": 3,  
+    "DDP (CIF + Droits de douane et taxes) - 5€/kg": 5  
 }
-
-# Détermination du coût final de l'incoterm
 incoterm_cost = incoterm_costs[incoterm]
 
 # Présence d'un agent ou d'un importateur
@@ -49,35 +63,12 @@ commission_rate = st.number_input("Commission de l'agent ou marge de l'importate
 # Ajout d'une TVA en option
 tva = st.number_input("TVA en %", min_value=0, max_value=30, value=0)
 
-def calculate_price(pr, transport_cost, incoterm_cost, agent=False, commission_rate=10, tva=0):
-    results = {}
-    margins = [0.5, 0.4, 0.3, 0.25]
-    recommended_margin = 0.5 if pr > 15 else (0.6 if pr * 1.6 <= 30 else 0.5)
-    
-    # Si l'Incoterm inclut le transport, on ne l'ajoute pas une seconde fois
-    total_transport_cost = 0 if incoterm == "DAP (Transport inclus)" else transport_cost
-    
-    for margin in margins:
-        if agent:
-            pv = (pr / (1 - margin)) / (1 - commission_rate / 100) + total_transport_cost + incoterm_cost
-        else:
-            pv = (pr / (1 - margin)) + total_transport_cost + incoterm_cost
-        
-        highlight = "(Recommandé)" if margin == recommended_margin else ""
-        results[f'PV avec {int(margin * 100)}% de marge et {commission_rate}% de commission {highlight}'] = pv * (1 + tva / 100)
-    
-    return results
-
 if st.button("Calculer"):
     results = calculate_price(pr, transport_cost, incoterm_cost, agent, commission_rate, tva)
     st.write(f"### Résultat pour {product_name} en {incoterm}, Destination : {transport_zone}")
     st.write(f"- PR : {pr} €")
-    
-    if incoterm != "DAP (Transport inclus)":
-        st.write(f"- Transport : {transport_cost} €/kg")
-    
+    st.write(f"- Transport inclus : {transport_cost} €/kg")
     st.write(f"- Coût Incoterm ({incoterm}) : {incoterm_cost} €/kg")
-    
     if agent:
         st.write(f"- Commission de l'agent : {commission_rate}%")
     if tva > 0:
