@@ -80,4 +80,3 @@ if st.button("Calculer"):
             st.markdown(f"<p style='color:red; font-weight:bold;'>{key} : {value:.2f} €/kg</p>", unsafe_allow_html=True)
         else:
             st.write(f"{key} : {value:.2f} €/kg")
-
